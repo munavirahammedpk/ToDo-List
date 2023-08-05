@@ -10,8 +10,6 @@ void main() {
   runApp(const MyApp());
 }
 
-ValueNotifier bottomListIndex = ValueNotifier(0);
-
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -19,7 +17,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'ToDo List App',
+      title: 'ToDo App',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
@@ -27,4 +25,3 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-
