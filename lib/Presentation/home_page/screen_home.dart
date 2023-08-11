@@ -1,6 +1,7 @@
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:todo_app/Application/todo_bloc/todo_bloc.dart';
 import 'package:todo_app/Presentation/adding_page/screen_add.dart';
 
 class HomePage extends StatelessWidget {
@@ -8,6 +9,11 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    print('object');
+    //WidgetsBinding.instance.addPostFrameCallback((_) {
+      BlocProvider.of<TodoBloc>(context).add(GetTaskEvent());
+    //});
+
     return Scaffold(
       appBar: AppBar(
         title: const Center(
@@ -72,22 +78,48 @@ class HomePage extends StatelessWidget {
                 ),
               ),
             ),
-            Expanded(
-              child: ListView.separated(
-                shrinkWrap: true,
-                itemBuilder: (context, index) {
-                  return const ListTile(
-                    leading: CircleAvatar(child: Text('data'),),
-                    title: Text('data'),
-                    trailing: Text('3:00 pm',style: TextStyle(color: Colors.green),),
+            BlocBuilder<TodoBloc, TodoState>(
+              builder: (context, state) {
+                if (state.isLoading) {
+                  return const Center(
+                    child: CircularProgressIndicator(),
                   );
-                  
-                },
-                separatorBuilder: (context, index) {
-                  return Divider();
-                },
-                itemCount: 10,
-              ),
+                }
+                if (state.isError) {
+                  return const Center(
+                    child: Text('Error While Fetchig Your Todos..'),
+                  );
+                }
+                if (state.todoList.isEmpty) {
+                  return const Center(
+                    child: Text('No ToDos..'),
+                  );
+                } else {
+                  return Expanded(
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemBuilder: (context, index) {
+                        final details = state.todoList[index];
+                        return ListTile(
+                          leading: CircleAvatar(
+                            child: Text(details.date),
+                          ),
+                          title: Text(details.task),
+                          subtitle: Text(details.category),
+                          trailing: Text(
+                            details.time,
+                            style: TextStyle(color: Colors.green),
+                          ),
+                        );
+                      },
+                      separatorBuilder: (context, index) {
+                        return const Divider();
+                      },
+                      itemCount: state.todoList.length,
+                    ),
+                  );
+                }
+              },
             )
           ],
         ),
@@ -96,7 +128,7 @@ class HomePage extends StatelessWidget {
         onPressed: () {
           Navigator.of(context).push(
             CupertinoPageRoute(
-              builder: (context) => AddTaskPage(),
+              builder: (context) => const AddTaskPage(),
             ),
           );
         },

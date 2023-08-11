@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:todo_app/Application/todo_bloc/todo_bloc.dart';
+
+import '../../Domain/task_model.dart';
 
 class AddTaskPage extends StatefulWidget {
   const AddTaskPage({super.key});
@@ -16,6 +20,8 @@ class _AddTaskPageState extends State<AddTaskPage> {
   ];
 
   TextEditingController newCategory = TextEditingController();
+  TextEditingController taskTextController = TextEditingController();
+  String? selectedCategory;
   DateTime? selectedDate;
   String? selectedTime;
   @override
@@ -23,7 +29,7 @@ class _AddTaskPageState extends State<AddTaskPage> {
     return SafeArea(
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Add Item'),
+          title: const Text('Add Task'),
         ),
         body: Padding(
           padding: const EdgeInsets.all(15.0),
@@ -34,7 +40,21 @@ class _AddTaskPageState extends State<AddTaskPage> {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     ElevatedButton(
-                      onPressed: () {},
+                      onPressed: () async {
+                        if (taskTextController.text.isEmpty) {
+                          return;
+                        }
+                        if (selectedCategory == null) {
+                          return;
+                        }
+                        final addedTask = await addTAsk();
+                        //context.read<TodoBloc>().add(AddTaskEvent(newTask: addedTask));
+
+                        BlocProvider.of<TodoBloc>(context)
+                            .add(AddTaskEvent(newTask: addedTask));
+                        Navigator.pop(context);
+                        BlocProvider.of<TodoBloc>(context).add(GetTaskEvent());
+                      },
                       child: const Text('Save'),
                     ),
                   ],
@@ -43,6 +63,7 @@ class _AddTaskPageState extends State<AddTaskPage> {
                   height: 20,
                 ),
                 TextFormField(
+                  controller: taskTextController,
                   decoration: const InputDecoration(
                     border: OutlineInputBorder(),
                     labelText: 'Task',
@@ -63,7 +84,9 @@ class _AddTaskPageState extends State<AddTaskPage> {
                     );
                   }).toList(),
                   hint: const Text('Select a Category'),
-                  onChanged: (value) {},
+                  onChanged: (value) {
+                    selectedCategory = value.toString();
+                  },
                 ),
                 Align(
                   alignment: Alignment.bottomRight,
@@ -110,20 +133,22 @@ class _AddTaskPageState extends State<AddTaskPage> {
                       backgroundColor: MaterialStateProperty.all(
                           const Color.fromARGB(255, 236, 15, 126))),
                   onPressed: () async {
-                   final selectedTimeTemp=await showTimePicker(
+                    final selectedTimeTemp = await showTimePicker(
                       context: context,
                       initialTime: TimeOfDay.now(),
                     );
-                    if (selectedTimeTemp==null) {
+                    if (selectedTimeTemp == null) {
                       return;
                     }
                     setState(() {
-                      
-                      selectedTime=selectedTimeTemp.format(context).toString();
+                      selectedTime =
+                          selectedTimeTemp.format(context).toString();
                     });
                   },
                   icon: const Icon(Icons.watch_later_outlined),
-                  label:  Text(selectedTime==null?'Select Time for Notification':selectedTime.toString()),
+                  label: Text(selectedTime == null
+                      ? 'Select Time for Notification'
+                      : selectedTime.toString()),
                 ),
               ],
             ),
@@ -136,7 +161,7 @@ class _AddTaskPageState extends State<AddTaskPage> {
   Future<void> addNewCategory(BuildContext context) async {
     showDialog(
       context: context,
-      builder: ((context) {
+      builder: (context) {
         return Dialog(
           child: SizedBox(
             height: 200,
@@ -166,7 +191,16 @@ class _AddTaskPageState extends State<AddTaskPage> {
             ),
           ),
         );
-      }),
+      },
+    );
+  }
+
+  Future<TaskModel> addTAsk() async {
+    return TaskModel(
+      task: taskTextController.text,
+      category: selectedCategory!,
+      date: selectedDate.toString().substring(0, 10),
+      time: selectedTime.toString(),
     );
   }
 }

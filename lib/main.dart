@@ -1,12 +1,12 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/svg.dart';
-import 'package:todo_app/Presentation/adding_page/screen_add.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:todo_app/Infratructure/sqflite_db/db.dart';
 import 'package:todo_app/Presentation/home_page/screen_home.dart';
+import 'Application/todo_bloc/todo_bloc.dart';
 
-import 'Presentation/completed_page/screen_completed.dart';
-
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await initializeDatabase();
   runApp(const MyApp());
 }
 
@@ -16,12 +16,15 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'ToDo App',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
+    return BlocProvider(
+      create: (context) => TodoBloc(),
+      child: MaterialApp(
+        title: 'ToDo App',
+        theme: ThemeData(
+          primarySwatch: Colors.blue,
+        ),
+        home: const HomePage(),
       ),
-      home: const HomePage(),
     );
   }
 }
