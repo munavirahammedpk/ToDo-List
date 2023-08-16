@@ -9,10 +9,9 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    print('object');
-    //WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       BlocProvider.of<TodoBloc>(context).add(GetTaskEvent());
-    //});
+    });
 
     return Scaffold(
       appBar: AppBar(
@@ -101,15 +100,66 @@ class HomePage extends StatelessWidget {
                       itemBuilder: (context, index) {
                         final details = state.todoList[index];
                         return ListTile(
-                          leading: CircleAvatar(
-                            child: Text(details.date),
+                          leading: Checkbox(
+                            value: details.isCompleted,
+                            onChanged: (value) {
+                              BlocProvider.of<TodoBloc>(context).add(
+                                UpdateCompletion(
+                                  id: details.id!,
+                                  isCompleted: value!,
+                                ),
+                              );
+                            },
                           ),
                           title: Text(details.task),
                           subtitle: Text(details.category),
-                          trailing: Text(
-                            details.time,
-                            style: TextStyle(color: Colors.green),
+                          trailing: Column(
+                            children: [
+                              Text(
+                                details.time,
+                                style: const TextStyle(color: Colors.green),
+                              ),
+                              (DateTime.parse(details.date).day ==
+                                      DateTime.now().day)
+                                  ? const Text(
+                                      'Today',
+                                      style: TextStyle(
+                                        color:
+                                            Color.fromARGB(255, 139, 138, 138),
+                                      ),
+                                    )
+                                  : (DateTime.parse(details.date).day ==
+                                          DateTime.now().day - 1)
+                                      ? const Text(
+                                          'Yesterday',
+                                          style: TextStyle(
+                                            color: Color.fromARGB(
+                                                255, 139, 138, 138),
+                                          ),
+                                        )
+                                      : (DateTime.parse(details.date).day ==
+                                              DateTime.now().day + 1)
+                                          ? const Text(
+                                              'Tomorrow',
+                                              style: TextStyle(
+                                                color: Color.fromARGB(
+                                                    255, 139, 138, 138),
+                                              ),
+                                            )
+                                          : Text(
+                                              details.date.substring(0, 10),
+                                              style: const TextStyle(
+                                                color: Color.fromARGB(
+                                                    255, 139, 138, 138),
+                                              ),
+                                            ),
+                            ],
                           ),
+                          onLongPress: () {
+                            BlocProvider.of<TodoBloc>(context).add(
+                              DeleteTaskEvent(id: details.id!),
+                            );
+                          },
                         );
                       },
                       separatorBuilder: (context, index) {

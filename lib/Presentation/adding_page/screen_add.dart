@@ -4,6 +4,13 @@ import 'package:todo_app/Application/todo_bloc/todo_bloc.dart';
 
 import '../../Domain/task_model.dart';
 
+final List<String> dropDownItemsList = [
+  'Personal',
+  'Shopping',
+  'Work',
+  'Health',
+];
+
 class AddTaskPage extends StatefulWidget {
   const AddTaskPage({super.key});
 
@@ -12,13 +19,6 @@ class AddTaskPage extends StatefulWidget {
 }
 
 class _AddTaskPageState extends State<AddTaskPage> {
-  final List dropDownItemsList = [
-    'Personal',
-    'Shopping',
-    'Work',
-    'Health',
-  ];
-
   TextEditingController newCategory = TextEditingController();
   TextEditingController taskTextController = TextEditingController();
   String? selectedCategory;
@@ -26,6 +26,7 @@ class _AddTaskPageState extends State<AddTaskPage> {
   String? selectedTime;
   @override
   Widget build(BuildContext context) {
+    BlocProvider.of<TodoBloc>(context).add(GetAllCategoryEvent());
     return SafeArea(
       child: Scaffold(
         appBar: AppBar(
@@ -45,6 +46,12 @@ class _AddTaskPageState extends State<AddTaskPage> {
                           return;
                         }
                         if (selectedCategory == null) {
+                          return;
+                        }
+                        if (selectedDate == null) {
+                          return;
+                        }
+                        if (selectedTime == null) {
                           return;
                         }
                         final addedTask = await addTAsk();
@@ -73,19 +80,25 @@ class _AddTaskPageState extends State<AddTaskPage> {
                 const SizedBox(
                   height: 20,
                 ),
-                DropdownButtonFormField(
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                  ),
-                  items: dropDownItemsList.map((e) {
-                    return DropdownMenuItem(
-                      value: e,
-                      child: Text(e),
+                BlocBuilder<TodoBloc, TodoState>(
+                  builder: (context, state) {
+                    return DropdownButtonFormField(
+                      borderRadius: BorderRadius.circular(20),
+                      menuMaxHeight: 200,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                      ),
+                      items: state.category.map((e) {
+                        return DropdownMenuItem(
+                          value: e,
+                          child: Text(e),
+                        );
+                      }).toList(),
+                      hint: const Text('Select a Category'),
+                      onChanged: (value) {
+                        selectedCategory = value.toString();
+                      },
                     );
-                  }).toList(),
-                  hint: const Text('Select a Category'),
-                  onChanged: (value) {
-                    selectedCategory = value.toString();
                   },
                 ),
                 Align(
@@ -158,9 +171,9 @@ class _AddTaskPageState extends State<AddTaskPage> {
     );
   }
 
-  Future<void> addNewCategory(BuildContext context) async {
+  Future<void> addNewCategory(BuildContext context1) async {
     showDialog(
-      context: context,
+      context: context1,
       builder: (context) {
         return Dialog(
           child: SizedBox(
@@ -181,8 +194,11 @@ class _AddTaskPageState extends State<AddTaskPage> {
                   ),
                   ElevatedButton(
                     onPressed: () {
-                      dropDownItemsList.add(newCategory.text);
+                      BlocProvider.of<TodoBloc>(context1)
+                          .add(AddNewCategoryEvent(category: newCategory.text));
                       Navigator.pop(context);
+                      BlocProvider.of<TodoBloc>(context1)
+                          .add(GetAllCategoryEvent());
                     },
                     child: const Text('Add'),
                   ),
@@ -199,8 +215,9 @@ class _AddTaskPageState extends State<AddTaskPage> {
     return TaskModel(
       task: taskTextController.text,
       category: selectedCategory!,
-      date: selectedDate.toString().substring(0, 10),
+      date: selectedDate.toString(),
       time: selectedTime.toString(),
+      isCompleted: false,
     );
   }
 }
