@@ -1,11 +1,22 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:todo_app/Application/todo_bloc/todo_bloc.dart';
 import 'package:todo_app/Presentation/adding_page/screen_add.dart';
 
+ValueNotifier<String> selectedFilterNotifier = ValueNotifier('All ToDos');
+
 class HomePage extends StatelessWidget {
-  const HomePage({super.key});
+  HomePage({super.key});
+  final _debouncer = Debouncer(milliseconds: 1 * 1000);
+  final List<String> popupMenuItemsList = [
+    'All ToDos',
+    'Today\'s ToDos',
+    'Completed ToDos',
+    'Uncompleted ToDos',
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -20,61 +31,69 @@ class HomePage extends StatelessWidget {
             'ToDo App',
           ),
         ),
+        actions: [
+          PopupMenuButton(
+            itemBuilder: (context) {
+              return popupMenuItemsList.map((e) {
+                return PopupMenuItem(
+                  value: e,
+                  child: Text(e),
+                );
+              }).toList();
+            },
+            icon: const Icon(Icons.more_vert),
+            onSelected: (value) {
+              BlocProvider.of<TodoBloc>(context).add(
+                FilterTaskEvent(filterQuery: value),
+              );
+              selectedFilterNotifier.value = value;
+            },
+          ),
+        ],
         elevation: 5,
       ),
       body: Padding(
         padding: const EdgeInsets.all(10.0),
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.all(10.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  IconButton(
-                    onPressed: () {},
-                    icon: const Icon(
-                      Icons.more_vert,
-                      size: 30,
-                    ),
-                  ),
-                  Container(
-                    height: 50,
-                    width: 50,
-                    decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(10),
-                        color: Colors.purple),
-                  ),
-                ],
-              ),
-            ),
             const SizedBox(
               height: 10,
             ),
-            const Padding(
-              padding: EdgeInsets.all(8.0),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
               child: SizedBox(
                 width: 250,
                 child: CupertinoSearchTextField(
                   placeholder: 'Search ToDo items..',
                   itemSize: 15,
+                  onChanged: (value) {
+                    _debouncer.run(() {
+                      BlocProvider.of<TodoBloc>(context).add(
+                        SearchTaskEvent(query: value),
+                      );
+                    });
+                  },
                 ),
               ),
             ),
             const SizedBox(
               height: 20,
             ),
-            const Padding(
-              padding: EdgeInsets.all(10.0),
+            Padding(
+              padding: const EdgeInsets.all(10.0),
               child: Align(
                 alignment: Alignment.topLeft,
-                child: Text(
-                  'All ToDos',
-                  style: TextStyle(
-                    fontSize: 25,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                child: ValueListenableBuilder(
+                    valueListenable: selectedFilterNotifier,
+                    builder: (context, newFilter, _) {
+                      return Text(
+                        newFilter,
+                        style: const TextStyle(
+                          fontSize: 25,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      );
+                    }),
               ),
             ),
             BlocBuilder<TodoBloc, TodoState>(
@@ -96,6 +115,7 @@ class HomePage extends StatelessWidget {
                 } else {
                   return Expanded(
                     child: ListView.separated(
+                      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                       shrinkWrap: true,
                       itemBuilder: (context, index) {
                         final details = state.todoList[index];
@@ -104,7 +124,7 @@ class HomePage extends StatelessWidget {
                             value: details.isCompleted,
                             onChanged: (value) {
                               BlocProvider.of<TodoBloc>(context).add(
-                                UpdateCompletion(
+                                UpdateCompletionEvent(
                                   id: details.id!,
                                   isCompleted: value!,
                                 ),
@@ -116,7 +136,9 @@ class HomePage extends StatelessWidget {
                           trailing: Column(
                             children: [
                               Text(
-                                details.time,
+                                TimeOfDay.fromDateTime(
+                                        DateTime.parse(details.date))
+                                    .format(context),
                                 style: const TextStyle(color: Colors.green),
                               ),
                               (DateTime.parse(details.date).day ==
@@ -155,6 +177,18 @@ class HomePage extends StatelessWidget {
                                             ),
                             ],
                           ),
+                          onTap: () {
+                            Navigator.of(context).push(
+                              CupertinoPageRoute(
+                                builder: (context) => AddTaskPage(
+                                  isUpdate: true,
+                                  id: details.id,
+                                  task: details.task,
+                                  category: details.category,
+                                ),
+                              ),
+                            );
+                          },
                           onLongPress: () {
                             BlocProvider.of<TodoBloc>(context).add(
                               DeleteTaskEvent(id: details.id!),
@@ -178,12 +212,26 @@ class HomePage extends StatelessWidget {
         onPressed: () {
           Navigator.of(context).push(
             CupertinoPageRoute(
-              builder: (context) => const AddTaskPage(),
+              builder: (context) => const AddTaskPage(
+                isUpdate: false,
+              ),
             ),
           );
         },
         child: const Icon(Icons.add),
       ),
     );
+  }
+}
+
+class Debouncer {
+  final int milliseconds;
+  Timer? _timer;
+
+  Debouncer({required this.milliseconds});
+
+  run(VoidCallback action) {
+    _timer?.cancel();
+    _timer = Timer(Duration(milliseconds: milliseconds), action);
   }
 }

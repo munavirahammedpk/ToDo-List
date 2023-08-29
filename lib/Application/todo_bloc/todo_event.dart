@@ -5,9 +5,11 @@ class TodoEvent {}
 
 class AddTaskEvent extends TodoEvent {
   final TaskModel newTask;
+  final bool isEnableNotification;
 
   AddTaskEvent({
     required this.newTask,
+    required this.isEnableNotification,
   });
 }
 
@@ -27,12 +29,33 @@ class AddNewCategoryEvent extends TodoEvent {
 
 class GetAllCategoryEvent extends TodoEvent {}
 
-class UpdateCompletion extends TodoEvent {
+class UpdateCompletionEvent extends TodoEvent {
   final int id;
   final bool isCompleted;
 
-  UpdateCompletion({
+  UpdateCompletionEvent({
     required this.id,
     required this.isCompleted,
   });
+}
+
+class UpdateTaskEvent extends TodoEvent {
+  final TaskModel updatedTask;
+  final bool isEnableNotification;
+
+  UpdateTaskEvent({
+    required this.updatedTask,
+    required this.isEnableNotification,
+  });
+}
+
+class SearchTaskEvent extends TodoEvent {
+  final String query;
+
+  SearchTaskEvent({required this.query});
+}
+
+class FilterTaskEvent extends TodoEvent {
+  final String filterQuery;
+  FilterTaskEvent({required this.filterQuery});
 }

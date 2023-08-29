@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:todo_app/Application/todo_bloc/todo_bloc.dart';
-
 import '../../Domain/task_model.dart';
 
 final List<String> dropDownItemsList = [
@@ -11,8 +10,21 @@ final List<String> dropDownItemsList = [
   'Health',
 ];
 
+bool isEnableNotification = true;
+
 class AddTaskPage extends StatefulWidget {
-  const AddTaskPage({super.key});
+  final bool isUpdate;
+  final int? id;
+  final String? task;
+  final String? category;
+
+  const AddTaskPage({
+    super.key,
+    required this.isUpdate,
+    this.id,
+    this.task,
+    this.category,
+  });
 
   @override
   State<AddTaskPage> createState() => _AddTaskPageState();
@@ -22,15 +34,21 @@ class _AddTaskPageState extends State<AddTaskPage> {
   TextEditingController newCategory = TextEditingController();
   TextEditingController taskTextController = TextEditingController();
   String? selectedCategory;
-  DateTime? selectedDate;
-  String? selectedTime;
+  DateTime? selectedDateTime;
+
   @override
   Widget build(BuildContext context) {
     BlocProvider.of<TodoBloc>(context).add(GetAllCategoryEvent());
+    if (widget.isUpdate) {
+      taskTextController.text = widget.task!;
+      selectedCategory = widget.category;
+    }
     return SafeArea(
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Add Task'),
+          title: (widget.isUpdate)
+              ? const Text('Edit Task')
+              : const Text('Add Task'),
         ),
         body: Padding(
           padding: const EdgeInsets.all(15.0),
@@ -41,24 +59,37 @@ class _AddTaskPageState extends State<AddTaskPage> {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     ElevatedButton(
-                      onPressed: () async {
+                      onPressed: () {
                         if (taskTextController.text.isEmpty) {
                           return;
                         }
                         if (selectedCategory == null) {
                           return;
                         }
-                        if (selectedDate == null) {
+                        if (selectedDateTime == null) {
                           return;
                         }
-                        if (selectedTime == null) {
+                      
+                        if (selectedDateTime!.compareTo(DateTime.now())==0 || selectedDateTime!.compareTo(DateTime.now())<0) {
                           return;
                         }
-                        final addedTask = await addTAsk();
-                        //context.read<TodoBloc>().add(AddTaskEvent(newTask: addedTask));
 
-                        BlocProvider.of<TodoBloc>(context)
-                            .add(AddTaskEvent(newTask: addedTask));
+                        if (widget.isUpdate) {
+                          final updatedTask = updateTask();
+                          BlocProvider.of<TodoBloc>(context).add(
+                            UpdateTaskEvent(
+                              updatedTask: updatedTask,
+                              isEnableNotification: isEnableNotification,
+                            ),
+                          );
+                        } else {
+                          final addedTask = addTAsk();
+                          BlocProvider.of<TodoBloc>(context).add(AddTaskEvent(
+                            newTask: addedTask,
+                            isEnableNotification: isEnableNotification,
+                          ));
+                        }
+
                         Navigator.pop(context);
                         BlocProvider.of<TodoBloc>(context).add(GetTaskEvent());
                       },
@@ -83,6 +114,7 @@ class _AddTaskPageState extends State<AddTaskPage> {
                 BlocBuilder<TodoBloc, TodoState>(
                   builder: (context, state) {
                     return DropdownButtonFormField(
+                      value: selectedCategory,
                       borderRadius: BorderRadius.circular(20),
                       menuMaxHeight: 200,
                       decoration: const InputDecoration(
@@ -94,7 +126,7 @@ class _AddTaskPageState extends State<AddTaskPage> {
                           child: Text(e),
                         );
                       }).toList(),
-                      hint: const Text('Select a Category'),
+                      hint: const Text('Select Category'),
                       onChanged: (value) {
                         selectedCategory = value.toString();
                       },
@@ -115,54 +147,37 @@ class _AddTaskPageState extends State<AddTaskPage> {
                 ),
                 ElevatedButton.icon(
                   onPressed: () async {
-                    final selectedDateTemp = await showDatePicker(
-                      context: context,
-                      initialDate: DateTime.now(),
-                      firstDate: DateTime.now(),
-                      lastDate: DateTime(
-                        DateTime.now().year + 1,
-                        DateTime.now().month,
-                      ),
-                    );
-                    if (selectedDateTemp == null) {
-                      return;
-                    }
+                    final selectedDateTimeTemp = await pickDateTime();
                     setState(() {
-                      selectedDate = selectedDateTemp;
+                      selectedDateTime = selectedDateTimeTemp;
                     });
                   },
                   icon: const Icon(Icons.date_range_outlined),
                   label: Text(
-                    selectedDate == null
-                        ? 'Select a Date'
-                        : selectedDate.toString().substring(0, 10),
+                    selectedDateTime == null
+                        ? 'Select Date and Time'
+                        : selectedDateTime.toString(),
                   ),
                 ),
                 const SizedBox(
                   height: 20,
                 ),
-                ElevatedButton.icon(
-                  style: ButtonStyle(
-                      backgroundColor: MaterialStateProperty.all(
-                          const Color.fromARGB(255, 236, 15, 126))),
-                  onPressed: () async {
-                    final selectedTimeTemp = await showTimePicker(
-                      context: context,
-                      initialTime: TimeOfDay.now(),
-                    );
-                    if (selectedTimeTemp == null) {
-                      return;
-                    }
-                    setState(() {
-                      selectedTime =
-                          selectedTimeTemp.format(context).toString();
-                    });
-                  },
-                  icon: const Icon(Icons.watch_later_outlined),
-                  label: Text(selectedTime == null
-                      ? 'Select Time for Notification'
-                      : selectedTime.toString()),
-                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      'Enable Notification :',
+                    ),
+                    Switch.adaptive(
+                      value: isEnableNotification,
+                      onChanged: (newValue) {
+                        setState(() {
+                          isEnableNotification = newValue;
+                        });
+                      },
+                    ),
+                  ],
+                )
               ],
             ),
           ),
@@ -170,6 +185,31 @@ class _AddTaskPageState extends State<AddTaskPage> {
       ),
     );
   }
+
+  Future pickDateTime() async {
+    DateTime? date = await pickDate();
+    if (date == null) {
+      return;
+    }
+    TimeOfDay? time = await pickTime();
+    if (time == null) {
+      return;
+    }
+    final dateTime =
+        DateTime(date.year, date.month, date.day, time.hour, time.minute);
+    return dateTime;
+  }
+
+  Future<DateTime?> pickDate() => showDatePicker(
+        context: context,
+        initialDate: DateTime.now(),
+        firstDate: DateTime.now(),
+        lastDate: DateTime.now().add(const Duration(days: 365)),
+      );
+  Future<TimeOfDay?> pickTime() => showTimePicker(
+        context: context,
+        initialTime: TimeOfDay.now(),
+      );
 
   Future<void> addNewCategory(BuildContext context1) async {
     showDialog(
@@ -211,12 +251,21 @@ class _AddTaskPageState extends State<AddTaskPage> {
     );
   }
 
-  Future<TaskModel> addTAsk() async {
+  TaskModel addTAsk() {
     return TaskModel(
       task: taskTextController.text,
       category: selectedCategory!,
-      date: selectedDate.toString(),
-      time: selectedTime.toString(),
+      date: selectedDateTime.toString(),
+      isCompleted: false,
+    );
+  }
+
+  TaskModel updateTask() {
+    return TaskModel(
+      id: widget.id,
+      task: taskTextController.text,
+      category: selectedCategory!,
+      date: selectedDateTime.toString(),
       isCompleted: false,
     );
   }

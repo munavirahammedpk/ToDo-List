@@ -20,7 +20,16 @@ class TodoBloc extends Bloc<TodoEvent, TodoState> {
           ),
         ) {
     on<AddTaskEvent>((event, emit) async {
-      await toDoImplemetation.addTask(event.newTask);
+      await toDoImplemetation.addTask(event.newTask).then((id) async {
+        if (event.isEnableNotification) {
+          await toDoImplemetation.scheduleNotification(
+            id,
+            event.newTask.task,
+            event.newTask.category,
+            DateTime.parse(event.newTask.date),
+          );
+        }
+      });
     });
     on<GetTaskEvent>((event, emit) async {
       if (state.todoList.isEmpty) {
@@ -43,6 +52,18 @@ class TodoBloc extends Bloc<TodoEvent, TodoState> {
           category: [],
         ),
       );
+    });
+    on<UpdateTaskEvent>((event, emit) async {
+      await toDoImplemetation.updateTask(event.updatedTask).then((id) async {
+        if (event.isEnableNotification) {
+          await toDoImplemetation.scheduleNotification(
+            event.updatedTask.id!,
+            event.updatedTask.task,
+            event.updatedTask.category,
+            DateTime.parse(event.updatedTask.date),
+          );
+        }
+      });
     });
     on<DeleteTaskEvent>((event, emit) async {
       emit(
@@ -84,7 +105,7 @@ class TodoBloc extends Bloc<TodoEvent, TodoState> {
       ));
     });
 
-    on<UpdateCompletion>((event, emit) async {
+    on<UpdateCompletionEvent>((event, emit) async {
       emit(TodoState(
         isLoading: true,
         isError: false,
@@ -102,6 +123,56 @@ class TodoBloc extends Bloc<TodoEvent, TodoState> {
           category: state.category,
         ));
       });
+    });
+    on<SearchTaskEvent>((event, emit) async {
+      if (state.todoList.isEmpty) {
+        emit(
+          TodoState(
+            isLoading: true,
+            isError: false,
+            todoList: [],
+            category: [],
+          ),
+        );
+      }
+
+      List<TaskModel> valueList = await toDoImplemetation.getAllTask();
+
+      valueList = valueList
+          .where(
+            (element) => element.task.toLowerCase().contains(event.query),
+          )
+          .toList();
+      emit(
+        TodoState(
+          isLoading: false,
+          isError: false,
+          todoList: valueList,
+          category: [],
+        ),
+      );
+    });
+    on<FilterTaskEvent>((event, emit) async {
+      if (state.todoList.isEmpty) {
+        emit(
+          TodoState(
+            isLoading: true,
+            isError: false,
+            todoList: [],
+            category: [],
+          ),
+        );
+      }
+
+      final valueList = await toDoImplemetation.filterTask(event.filterQuery);
+      emit(
+        TodoState(
+          isLoading: false,
+          isError: false,
+          todoList: valueList,
+          category: [],
+        ),
+      );
     });
   }
 }
